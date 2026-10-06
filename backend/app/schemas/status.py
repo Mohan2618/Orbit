@@ -11,3 +11,9 @@ class ServiceStatus(BaseModel):
 
 class HealthStatus(ServiceStatus):
     status: str = "healthy"
+
+
+class ReadinessStatus(ServiceStatus):
+    status: str = "ready"
+    database: str = "healthy"
+    queue: str = "healthy"

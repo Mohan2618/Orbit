@@ -56,6 +56,21 @@ ruff = "^0.5"
     assert _detect_test_frameworks(dependencies, set()) == ["pytest"]
 
 
+def test_python_requirements_ignore_pip_options_and_unsafe_urls() -> None:
+    dependencies = _manifest_dependencies(
+        "requirements.txt",
+        """
+-r nested.txt
+--index-url https://packages.example.invalid/simple
+git+https://example.invalid/project.git#egg=untrusted
+fastapi @ https://files.example.invalid/fastapi.whl
+requests>=2.0
+""",
+    )
+
+    assert dependencies == {"fastapi", "requests"}
+
+
 def test_analyze_endpoint_returns_repository_intelligence() -> None:
     async def github_handler(request: httpx.Request) -> httpx.Response:
         if request.url.path == "/repos/example/service":

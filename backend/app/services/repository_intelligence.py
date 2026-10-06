@@ -106,6 +106,13 @@ def _is_skipped_path(path: str) -> bool:
 
 
 def _python_package_name(line: str) -> str | None:
+    line = line.strip()
+    if not line or line.startswith("-"):
+        return None
+    if " @ " in line:
+        line = line.split(" @ ", 1)[0]
+    elif "://" in line:
+        return None
     match = re.match(r"\s*([A-Za-z0-9][A-Za-z0-9._-]*)", line)
     return match.group(1).lower().replace("_", "-") if match else None
 
@@ -288,7 +295,7 @@ class GitHubRepositoryAnalyzer:
         headers = {
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": GITHUB_API_VERSION,
-            "User-Agent": "Orbit-Repository-Intelligence/0.1.0",
+            "User-Agent": "Orbit-Repository-Intelligence/1.0.0",
         }
 
         async with httpx.AsyncClient(
@@ -383,8 +390,14 @@ class GitHubRepositoryAnalyzer:
                 location = response.headers.get("location")
                 if not location or redirect_count == MAX_API_REDIRECTS:
                     raise GitHubUnavailable("GitHub returned too many redirects.")
-                redirect_url = response.request.url.join(location)
-                if redirect_url.scheme != "https" or redirect_url.host != "api.github.com":
+                redirect_url = httpx.URL(request_url).join(location)
+                if (
+                    redirect_url.scheme != "https"
+                    or redirect_url.host != "api.github.com"
+                    or redirect_url.port not in (None, 443)
+                    or bool(redirect_url.username)
+                    or bool(redirect_url.password)
+                ):
                     raise GitHubUnavailable("GitHub returned a redirect outside the GitHub API host.")
                 request_url = redirect_url
                 continue

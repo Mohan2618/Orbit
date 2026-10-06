@@ -4,8 +4,10 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.pytest-run-tmp/
 .coverage
 htmlcov/
+*.db
 
 # Local configuration and secrets
 .env

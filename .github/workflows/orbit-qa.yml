@@ -1,0 +1,20 @@
+name: Orbit Repository QA
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 4 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  orbit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Queue and wait for Orbit
+        env:
+          ORBIT_API_URL: ${{ secrets.ORBIT_API_URL }}
+          ORBIT_API_KEY: ${{ secrets.ORBIT_API_KEY }}
+          REPOSITORY_URL: https://github.com/${{ github.repository }}
+        run: python .github/scripts/orbit_ci.py
