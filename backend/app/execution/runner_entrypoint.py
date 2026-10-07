@@ -72,7 +72,7 @@ def main() -> int:
             "PIP_NO_CACHE_DIR": "1",
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTEST_ADDOPTS": "-p no:cacheprovider",
-            "PYTHONPATH": "/tmp/orbit-packages:/workspace",
+            "PYTHONPATH": "/orbit-packages:/workspace",
         }
     )
     log_directory = Path("/tmp/orbit-logs")
@@ -92,7 +92,7 @@ def main() -> int:
                 "--no-cache-dir",
                 "--disable-pip-version-check",
                 "--find-links=/wheelhouse",
-                "--target=/tmp/orbit-packages",
+                "--target=/orbit-packages",
                 "--report=/tmp/pip-report.json",
                 *packages,
             ],
@@ -100,7 +100,7 @@ def main() -> int:
             log_path=log_directory / "install.log",
             env={
                 **os.environ,
-                "PYTHONPATH": "/tmp/orbit-packages",
+                "PYTHONPATH": "/orbit-packages",
             },
         )
         steps.append(install)
@@ -124,14 +124,13 @@ def main() -> int:
             if isinstance(item, dict) and isinstance(item.get("metadata"), dict)
         ]
 
-    # /tmp is mounted noexec in the sandbox, so the generated console script
-    # cannot be executed directly. Invoke Ruff through the Python interpreter.
+    # Packages live on a dedicated Docker volume because /tmp is mounted noexec.
     ruff = run_step(
         "ruff",
         [sys.executable, "-m", "ruff", "check", "--output-format=json", "/workspace"],
         timeout=45,
         log_path=log_directory / "ruff.log",
-        env={**os.environ, "PYTHONPATH": "/tmp/orbit-packages"},
+        env={**os.environ, "PYTHONPATH": "/orbit-packages"},
     )
     steps.append(ruff)
     ruff_output = tail(log_directory / "ruff.log")
