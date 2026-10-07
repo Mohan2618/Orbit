@@ -2,7 +2,7 @@ from html import escape
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -64,7 +64,7 @@ def rerun_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) ->
 
 
 @router.delete("/runs/{test_run_id}")
-def delete_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) -> JSONResponse:
+def delete_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) -> Response:
     run = session.scalar(select(TestRun).where(TestRun.id == test_run_id))
     if run is None:
         raise HTTPException(status_code=404, detail="Test run not found.")
@@ -72,7 +72,7 @@ def delete_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) -
         raise HTTPException(status_code=409, detail="Active runs cannot be deleted. Wait for completion first.")
     session.delete(run)
     session.commit()
-    return JSONResponse(status_code=204, content=None)
+    return Response(status_code=204)
 
 @router.get("/runs/{test_run_id}", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -> HTMLResponse:
