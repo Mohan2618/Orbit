@@ -76,37 +76,43 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Orbit QA Run</title>
 <style>
-body{{margin:0;background:#0a1014;color:#edf4f2;font:15px system-ui,sans-serif}}
-main{{max-width:1100px;margin:0 auto;padding:42px 24px 80px}}
-a{{color:#9be6c1}} .eyebrow{{color:#9be6c1;font:11px monospace;letter-spacing:.14em}}
-.panel{{background:#111a20;border:1px solid #223039;border-radius:13px;padding:22px;margin:14px 0}}
-.grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}}
-.card{{background:#0d151a;border:1px solid #223039;border-radius:9px;padding:16px;margin:8px 0}}
-.card span,.step span{{display:block;color:#9be6c1;margin-top:7px}} .good{{color:#9be6c1!important}} .bad{{color:#ff8f8f!important}} .warn{{color:#ffcf8a!important}}
-.step{{display:grid;grid-template-columns:1fr auto auto;gap:20px;padding:12px 0;border-bottom:1px solid #223039}}
-small,p{{color:#9aaeb0;line-height:1.6}} pre{{white-space:pre-wrap;overflow:auto;background:#080d10;padding:16px;border-radius:8px}}
-@media(max-width:700px){{.grid{{grid-template-columns:repeat(2,1fr)}}.step{{grid-template-columns:1fr}}}}
+:root{{--bg:#081014;--panel:#101a20;--panel2:#0c1419;--line:#23343d;--text:#edf5f2;--muted:#8fa5a7;--good:#8ee7bb;--bad:#ff8b8b;--warn:#ffd08a;--accent:#9be6c1}}
+*{{box-sizing:border-box}} body{{margin:0;background:radial-gradient(circle at 85% -10%,#18352d 0,transparent 32%),var(--bg);color:var(--text);font:15px system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}}
+main{{max-width:1120px;margin:0 auto;padding:34px 24px 80px}} a{{color:var(--accent)}} .back-link{{display:inline-flex;margin-bottom:22px;text-decoration:none}} .back-link:hover{{text-decoration:underline}}
+.hero{{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:18px}} .eyebrow{{color:var(--accent);font:11px monospace;letter-spacing:.14em;margin:0 0 10px}} h1{{font-size:clamp(30px,5vw,46px);letter-spacing:-.04em;margin:0 0 8px}} h2{{font-size:20px;margin:0}} p,small{{color:var(--muted);line-height:1.65}} .repo{{word-break:break-all;margin:0}}
+.outcome-badge{{padding:9px 13px;border-radius:999px;font:700 11px monospace;text-transform:uppercase;letter-spacing:.05em;border:1px solid currentColor;white-space:nowrap}} .good{{color:var(--good)!important}} .bad{{color:var(--bad)!important}} .warn{{color:var(--warn)!important}} .neutral{{color:#b7c5c3!important}}
+.panel{{background:linear-gradient(145deg,var(--panel),#0d161b);border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:14px;box-shadow:0 10px 30px #0002}}
+.summary-grid{{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}} .metric{{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:15px}} .metric label{{display:block;color:var(--muted);font-size:11px;margin-bottom:7px}} .metric strong{{font-size:20px}}
+.section-head{{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}} .step-list{{border:1px solid var(--line);border-radius:11px;overflow:hidden}} .step{{display:grid;grid-template-columns:1fr 90px 70px;gap:16px;align-items:center;padding:14px 16px;background:var(--panel2);border-bottom:1px solid var(--line)}} .step:last-child{{border-bottom:0}} .step-name{{font-weight:700}} .step-status{{text-align:center;font:700 11px monospace}} .step-time{{text-align:right}}
+.analysis-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}} .info-card{{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:17px}} .info-card .value{{display:block;font-size:20px;font-weight:700;margin-top:6px}}
+.gap-card{{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:11px;padding:17px}} .gap-card strong{{font-size:15px}} .code-list{{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}} .code-list span{{padding:5px 8px;border:1px solid var(--line);border-radius:7px;color:#d5e0dd;background:#101b20;font:12px monospace}}
+.message{{border-color:#55482f;background:#17150f}} .message strong{{color:var(--warn)}} details summary{{cursor:pointer;color:var(--accent);font-weight:700}} pre{{white-space:pre-wrap;overflow:auto;max-height:520px;background:#070c0f;border:1px solid var(--line);padding:16px;border-radius:10px;font-size:12px;line-height:1.55}} .empty{{color:var(--muted);padding:8px 0}}
+@media(max-width:900px){{.summary-grid{{grid-template-columns:repeat(3,1fr)}}.hero{{align-items:flex-start;flex-direction:column}}}}
+@media(max-width:600px){{main{{padding:24px 14px 60px}}.summary-grid,.analysis-grid{{grid-template-columns:1fr 1fr}}.step{{grid-template-columns:1fr auto}}.step-time{{display:none}}}}
 </style></head><body><main>
 <p class="eyebrow">ORBIT · RUN DETAILS</p>
-<div class="hero"><div><h1>QA run {escape(str(run.id)[:8])}…</h1>
 <a class="back-link" href="/dashboard">← Back to dashboard</a>
-<div class="panel"><p class="repo">{escape(run.repository_url)}</p></div><span class="outcome-badge {status_class(str(outcome))}">{escape(str(outcome))}</span></div>
+<div class="hero"><div><h1>QA run {escape(str(run.id)[:8])}…</h1><p class="repo">{escape(run.repository_url)}</p></div><span class="outcome-badge {status_class(str(outcome))}">{escape(str(outcome))}</span></div>
+
 <div class="panel"><div class="summary-grid">
-<div class="card"><small>Status</small><b>{escape(run.status)}</b></div>
-<div class="card"><small>Outcome</small><b class="{status_class(str(outcome))}">{escape(str(outcome))}</b></div>
-<div class="card"><small>Passed</small><b>{escape(str(counts.get("passed", 0)))}</b></div>
-<div class="card"><small>Failed</small><b>{escape(str(counts.get("failed", 0)))}</b></div>
-<div class="card"><small>Coverage</small><b>{escape(str(result.get("coverage_percent", "—")))}%</b></div>
-<div class="card"><small>Duration</small><b>{escape(str(result.get("duration_seconds", "—")))}s</b></div>
+<div class="metric"><label>Status</label><strong>{escape(run.status)}</strong></div>
+<div class="metric"><label>Outcome</label><strong class="{status_class(str(outcome))}">{escape(str(outcome))}</strong></div>
+<div class="metric"><label>Passed</label><strong class="good">{escape(str(counts.get("passed", 0)))}</strong></div>
+<div class="metric"><label>Failed</label><strong class="bad">{escape(str(counts.get("failed", 0)))}</strong></div>
+<div class="metric"><label>Coverage</label><strong>{escape(str(result.get("coverage_percent", "—")))}%</strong></div>
+<div class="metric"><label>Duration</label><strong>{escape(str(result.get("duration_seconds", "—")))}s</strong></div>
 </div></div>
-<div class="panel"><div class="section-head"><h2>Execution</h2><small>{len(steps)} steps</small></div><div class="step-list">{step_rows}</div></div>
+
+<div class="panel"><div class="section-head"><h2>Execution</h2><small>{len(steps)} step(s)</small></div><div class="step-list">{step_rows}</div></div>
 <div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
 <div class="panel"><div class="section-head"><h2>Test gaps</h2><small>{len(candidates)} candidate(s)</small></div>{gap_rows}</div>
+
 <div class="analysis-grid">
 <div class="info-card"><b>Security</b><span class="value">{escape(str(security.get("finding_count", 0)))} findings</span></div>
 <div class="info-card"><b>Generation candidates</b><span class="value">{escape(str(generation.get("count", 0)))}</span></div>
 <div class="info-card"><b>QA checks</b><span class="value">{escape(str(len(plan.get("selected_checks") or [])))}</span></div>
 </div>
+
 {f'<div class="panel message"><strong>Run message</strong><p>{escape(str(message))}</p></div>' if message else ''}
 <div class="panel"><details><summary>Raw result JSON</summary><pre>{raw}</pre></details></div>
 </main></body></html>"""
