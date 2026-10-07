@@ -160,7 +160,7 @@ def main() -> int:
         ],
         timeout=240,
         log_path=log_directory / "pytest.log",
-        env={**os.environ, "PYTHONPATH": "/tmp/orbit-packages"},
+        env={**os.environ, "PYTHONPATH": "/orbit-packages"},
     )
     steps.append(pytest)
     output = tail(log_directory / "pytest.log")
