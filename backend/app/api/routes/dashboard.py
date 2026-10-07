@@ -2,6 +2,7 @@ from html import escape
 import json
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -9,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.run_schedule import RunSchedule
 from app.models.test_run import TestRun
+from app.services.repository_intelligence import parse_github_repository_url
+from app.workers.tasks import run_test_run
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 
@@ -29,6 +32,47 @@ def dashboard_summary(session: Session = Depends(get_db)) -> dict:
         ],
     }
 
+
+@router.post("/runs/{test_run_id}/rerun")
+def rerun_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) -> dict:
+    run = session.scalar(select(TestRun).where(TestRun.id == test_run_id))
+    if run is None:
+        raise HTTPException(status_code=404, detail="Test run not found.")
+    if run.status in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="This run is still active. Wait for it to finish before reanalyzing.")
+    active_runs = session.scalar(
+        select(func.count()).select_from(TestRun).where(TestRun.status.in_(["queued", "running"]))
+    ) or 0
+    if active_runs >= 500:
+        raise HTTPException(status_code=429, detail="The QA queue is full. Try again after active runs complete.")
+    try:
+        parse_github_repository_url(run.repository_url)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail="The stored repository URL is invalid.") from exc
+    new_run = TestRun(repository_url=run.repository_url, generated_test_id=run.generated_test_id)
+    session.add(new_run)
+    session.commit()
+    session.refresh(new_run)
+    try:
+        run_test_run.delay(new_run.id)
+    except Exception as exc:
+        new_run.status = "failed"
+        new_run.error_message = "The QA worker queue is unavailable. Please try again."
+        session.commit()
+        raise HTTPException(status_code=503, detail=new_run.error_message) from exc
+    return {"id": new_run.id, "status": new_run.status, "message": "Reanalysis queued."}
+
+
+@router.delete("/runs/{test_run_id}")
+def delete_dashboard_run(test_run_id: str, session: Session = Depends(get_db)) -> JSONResponse:
+    run = session.scalar(select(TestRun).where(TestRun.id == test_run_id))
+    if run is None:
+        raise HTTPException(status_code=404, detail="Test run not found.")
+    if run.status in {"queued", "running"}:
+        raise HTTPException(status_code=409, detail="Active runs cannot be deleted. Wait for completion first.")
+    session.delete(run)
+    session.commit()
+    return JSONResponse(status_code=204, content=None)
 
 @router.get("/runs/{test_run_id}", response_class=HTMLResponse, include_in_schema=False)
 def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -> HTMLResponse:
