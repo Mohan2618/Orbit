@@ -133,6 +133,7 @@ def main() -> int:
         log_path=log_directory / "ruff.log",
         env={**os.environ, "PYTHONPATH": "/tmp/orbit-packages"},
     )
+    steps.append(ruff)
     ruff_output = tail(log_directory / "ruff.log")
     try:
         raw_findings = json.loads(ruff_output)
@@ -207,7 +208,7 @@ def main() -> int:
                     "timed_out": ruff["timed_out"],
                     "findings_count": len(findings),
                     "findings": findings,
-                    "output": ruff_output if ruff["return_code"] not in {0, 1} else None,
+                    "output": ruff_output if ruff["return_code"] != 0 else None,
                 },
                 "coverage_percent": coverage_percent,
                 "error_message": error_message,
