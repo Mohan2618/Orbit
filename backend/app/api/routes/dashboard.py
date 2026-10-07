@@ -54,7 +54,7 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
         return "warn"
 
     step_rows = "".join(
-        f'<div class="step"><b>{escape(str(step.get("name", "step")))}</b>'
+        f'<div class="step"><span class="step-name">{escape(str(step.get("name", "step")))}</b>'
         f'<span class="{status_class("passed" if step.get("return_code") == 0 else "failed")}">'
         f'{escape("Passed" if step.get("return_code") == 0 else ("Timed out" if step.get("timed_out") else "Exit " + str(step.get("return_code"))))}</span>'
         f'<small>{escape(str(step.get("duration_seconds", "—")))}s</small></div>'
@@ -88,9 +88,10 @@ small,p{{color:#9aaeb0;line-height:1.6}} pre{{white-space:pre-wrap;overflow:auto
 @media(max-width:700px){{.grid{{grid-template-columns:repeat(2,1fr)}}.step{{grid-template-columns:1fr}}}}
 </style></head><body><main>
 <p class="eyebrow">ORBIT · RUN DETAILS</p>
-<h1>QA run {escape(str(run.id)[:8])}…</h1>
-<p><a href="/">← Back to dashboard</a></p>
-<div class="panel"><p>{escape(run.repository_url)}</p><div class="grid">
+<div class="hero"><div><h1>QA run {escape(str(run.id)[:8])}…</h1>
+<a class="back-link" href="/dashboard">← Back to dashboard</a>
+<div class="panel"><p class="repo">{escape(run.repository_url)}</p></div><span class="outcome-badge {status_class(str(outcome))}">{escape(str(outcome))}</span></div>
+<div class="panel"><div class="summary-grid">
 <div class="card"><small>Status</small><b>{escape(run.status)}</b></div>
 <div class="card"><small>Outcome</small><b class="{status_class(str(outcome))}">{escape(str(outcome))}</b></div>
 <div class="card"><small>Passed</small><b>{escape(str(counts.get("passed", 0)))}</b></div>
@@ -98,15 +99,15 @@ small,p{{color:#9aaeb0;line-height:1.6}} pre{{white-space:pre-wrap;overflow:auto
 <div class="card"><small>Coverage</small><b>{escape(str(result.get("coverage_percent", "—")))}%</b></div>
 <div class="card"><small>Duration</small><b>{escape(str(result.get("duration_seconds", "—")))}s</b></div>
 </div></div>
-<div class="panel"><h2>Execution</h2>{step_rows}</div>
-<div class="panel"><h2>Repository analysis</h2><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
-<div class="panel"><h2>Test gaps</h2>{gap_rows}</div>
-<div class="grid">
-<div class="card"><b>Security</b><span>{escape(str(security.get("finding_count", 0)))} findings</span></div>
-<div class="card"><b>Generation candidates</b><span>{escape(str(generation.get("count", 0)))}</span></div>
-<div class="card"><b>QA checks</b><span>{escape(str(len(plan.get("selected_checks") or [])))}</span></div>
+<div class="panel"><div class="section-head"><h2>Execution</h2><small>{len(steps)} steps</small></div><div class="step-list">{step_rows}</div></div>
+<div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
+<div class="panel"><div class="section-head"><h2>Test gaps</h2><small>{len(candidates)} candidate(s)</small></div>{gap_rows}</div>
+<div class="analysis-grid">
+<div class="info-card"><b>Security</b><span class="value">{escape(str(security.get("finding_count", 0)))} findings</span></div>
+<div class="info-card"><b>Generation candidates</b><span class="value">{escape(str(generation.get("count", 0)))}</span></div>
+<div class="info-card"><b>QA checks</b><span class="value">{escape(str(len(plan.get("selected_checks") or [])))}</span></div>
 </div>
-{f'<div class="panel"><h2>Message</h2><p>{escape(str(message))}</p></div>' if message else ''}
+{f'<div class="panel message"><strong>Run message</strong><p>{escape(str(message))}</p></div>' if message else ''}
 <div class="panel"><details><summary>Raw result JSON</summary><pre>{raw}</pre></details></div>
 </main></body></html>"""
     return HTMLResponse(html)
