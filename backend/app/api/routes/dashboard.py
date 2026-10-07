@@ -54,10 +54,10 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
         return "warn"
 
     step_rows = "".join(
-        f'<div class="step"><span class="step-name">{escape(str(step.get("name", "step")))}</b>'
-        f'<span class="{status_class("passed" if step.get("return_code") == 0 else "failed")}">'
+        f'<div class="step"><span class="step-name">{escape(str(step.get("name", "step")))}</span>'
+        f'<span class="step-status {status_class("passed" if step.get("return_code") == 0 else "failed")}">'
         f'{escape("Passed" if step.get("return_code") == 0 else ("Timed out" if step.get("timed_out") else "Exit " + str(step.get("return_code"))))}</span>'
-        f'<small>{escape(str(step.get("duration_seconds", "—")))}s</small></div>'
+        f'<small class="step-time">{escape(str(step.get("duration_seconds", "—")))}s</small></div>'
         for step in steps
     ) or '<p>No execution steps recorded.</p>'
 
