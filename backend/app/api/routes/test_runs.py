@@ -40,6 +40,23 @@ def create_test_run(
             generated_repository.owner.casefold(), generated_repository.name.casefold()
         ):
             raise HTTPException(status_code=422, detail="Generated test belongs to a different repository.")
+    repository = parse_github_repository_url(request.repository_url)
+    repository_key = (repository.owner.casefold(), repository.name.casefold())
+    existing_runs = session.scalars(select(TestRun).order_by(TestRun.created_at.desc())).all()
+    for existing in existing_runs:
+        try:
+            existing_repository = parse_github_repository_url(existing.repository_url)
+        except ValueError:
+            continue
+        if (existing_repository.owner.casefold(), existing_repository.name.casefold()) == repository_key:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"This repository already has a run ({existing.id[:8]}…, {existing.status}). "
+                    "Use Reanalyze from Recent runs to intentionally start another check."
+                ),
+            )
+
     test_run = TestRun(repository_url=request.repository_url.strip(), generated_test_id=generated_test_id)
     session.add(test_run)
     session.commit()
