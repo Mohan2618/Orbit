@@ -3,7 +3,6 @@ import json
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, Response
-from fastapi.responses import HTMLResponse
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
