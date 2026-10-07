@@ -104,9 +104,13 @@ def execute_test_run(test_run_id: str) -> dict:
             wheel_volume = client.volumes.create(
                 name=f"orbit-run-{run_suffix}-wheels", labels=labels
             )
-            volumes.extend([workspace_volume, wheel_volume])
+            package_volume = client.volumes.create(
+                name=f"orbit-run-{run_suffix}-packages", labels=labels
+            )
+            volumes.extend([workspace_volume, wheel_volume, package_volume])
             _prepare_volume(client, run_suffix, labels, workspace_volume, "/workspace", containers)
             _prepare_volume(client, run_suffix, labels, wheel_volume, "/wheelhouse", containers)
+            _prepare_volume(client, run_suffix, labels, package_volume, "/orbit-packages", containers)
 
             download_result = _download_dependency_wheels(
                 client, run_suffix, labels, wheel_volume, runner_packages, containers
@@ -121,7 +125,14 @@ def execute_test_run(test_run_id: str) -> dict:
 
             _copy_source_to_volume(client, run_suffix, labels, workspace_volume, source, containers)
             report = _run_pytest_sandbox(
-                client, run_suffix, labels, workspace_volume, wheel_volume, runner_packages, containers
+                client,
+                run_suffix,
+                labels,
+                workspace_volume,
+                wheel_volume,
+                package_volume,
+                runner_packages,
+                containers,
             )
             report["repository"] = discovery
             report["dimensions"] = dimensions
@@ -345,7 +356,7 @@ def _copy_source_to_volume(client, suffix, labels, workspace_volume, source, con
     loader.stop(timeout=1)
 
 
-def _run_pytest_sandbox(client, suffix, labels, workspace_volume, wheel_volume, packages, containers):
+def _run_pytest_sandbox(client, suffix, labels, workspace_volume, wheel_volume, package_volume, packages, containers):
     container = client.containers.run(
         RUNNER_IMAGE,
         name=f"orbit-run-{suffix}-pytest",
@@ -357,6 +368,7 @@ def _run_pytest_sandbox(client, suffix, labels, workspace_volume, wheel_volume, 
         volumes={
             workspace_volume.name: {"bind": "/workspace", "mode": "ro"},
             wheel_volume.name: {"bind": "/wheelhouse", "mode": "ro"},
+            package_volume.name: {"bind": "/orbit-packages", "mode": "rw"},
         },
         working_dir="/workspace",
         environment={
