@@ -124,9 +124,11 @@ def main() -> int:
             if isinstance(item, dict) and isinstance(item.get("metadata"), dict)
         ]
 
+    # /tmp is mounted noexec in the sandbox, so the generated console script
+    # cannot be executed directly. Invoke Ruff through the Python interpreter.
     ruff = run_step(
         "ruff",
-        ["/tmp/orbit-packages/bin/ruff", "check", "--output-format=json", "/workspace"],
+        [sys.executable, "-m", "ruff", "check", "--output-format=json", "/workspace"],
         timeout=45,
         log_path=log_directory / "ruff.log",
         env={**os.environ, "PYTHONPATH": "/tmp/orbit-packages"},
