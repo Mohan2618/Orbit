@@ -101,3 +101,4 @@ The CI workflow runs the backend checks and validates the Compose configuration.
 - [Development roadmap](docs/roadmap.md)
 - [Repository intelligence](docs/repository-intelligence.md)
 - [QA execution security boundary](docs/qa-execution-security.md)
+- [Orbit Specifications](docs/Orbit - Specifications.pdf)
