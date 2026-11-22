@@ -1,8 +1,7 @@
-from io import BytesIO
 import tarfile
+from io import BytesIO
 
 import pytest
-
 from app.services.repository_archive import _extract_source_archive
 from app.services.repository_intelligence import GitHubUnavailable
 

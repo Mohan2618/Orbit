@@ -1,5 +1,4 @@
 import pytest
-
 from app.services.qa_execution import _hardening, _safe_package_names
 
 

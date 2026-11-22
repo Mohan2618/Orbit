@@ -1,7 +1,5 @@
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-
 from app.api.routes.repositories import get_repository_analyzer
 from app.main import app
 from app.services.repository_intelligence import (
@@ -11,6 +9,7 @@ from app.services.repository_intelligence import (
     _manifest_dependencies,
     parse_github_repository_url,
 )
+from fastapi.testclient import TestClient
 
 client = TestClient(app)
 

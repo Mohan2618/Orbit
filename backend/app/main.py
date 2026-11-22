@@ -1,8 +1,7 @@
-import hmac
 import hashlib
+import hmac
 import os
-from datetime import datetime, timedelta, timezone
-
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -11,16 +10,16 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.routes.api_credentials import router as api_credentials_router
+from app.api.routes.dashboard import router as dashboard_router
 from app.api.routes.health import router as health_router
 from app.api.routes.integrations import router as integrations_router
-from app.api.routes.dashboard import router as dashboard_router
+from app.api.routes.ml_evaluations import router as ml_evaluations_router
 from app.api.routes.repositories import router as repositories_router
 from app.api.routes.schedules import router as schedules_router
-from app.api.routes.test_runs import router as test_runs_router
 from app.api.routes.test_generation import router as test_generation_router
-from app.api.routes.ml_evaluations import router as ml_evaluations_router
-from app.api.routes.api_credentials import router as api_credentials_router
-from app.core.config import PROJECT_NAME, PROJECT_VERSION, SERVICE_NAME
+from app.api.routes.test_runs import router as test_runs_router
+from app.core.config import PROJECT_NAME, PROJECT_VERSION
 from app.core.database import SessionLocal
 from app.models.api_credential import ApiCredential
 from app.schemas.status import ServiceStatus
@@ -71,7 +70,7 @@ async def optional_api_key(request: Request, call_next):
                         )
                     )
                     if credential is not None:
-                        now = datetime.now(timezone.utc)
+                        now = datetime.now(UTC)
                         if credential.last_used_at is None or credential.last_used_at < now - timedelta(minutes=5):
                             credential.last_used_at = now
                             session.commit()

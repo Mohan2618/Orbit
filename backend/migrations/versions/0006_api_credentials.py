@@ -1,7 +1,7 @@
 """Add individually revocable team API credentials."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0006_api_credentials"
 down_revision = "0005_query_indexes"

@@ -1,9 +1,7 @@
-from pathlib import Path, PurePosixPath
 import hashlib
 import tempfile
-from datetime import datetime, timezone
-
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
+from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
@@ -12,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.models.generated_test import GeneratedTest
 from app.models.test_run import TestRun
-from app.schemas.generated_test import GenerateTestRequest, GeneratedTestResponse
+from app.schemas.generated_test import GeneratedTestResponse, GenerateTestRequest
 from app.services.repository_archive import download_repository
 from app.services.repository_intelligence import parse_github_repository_url
 from app.services.test_generation import TestGenerationError, generate_tests
@@ -81,7 +79,7 @@ def approve_generated_test(candidate_id: str, session: Session = Depends(get_db)
     if candidate is None:
         raise HTTPException(status_code=404, detail="Generated test not found.")
     candidate.approved = True
-    candidate.approved_at = datetime.now(timezone.utc)
+    candidate.approved_at = datetime.now(UTC)
     session.commit()
     session.refresh(candidate)
     return candidate

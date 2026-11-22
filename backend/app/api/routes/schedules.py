@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
@@ -25,7 +25,7 @@ def create_schedule(request: ScheduleRequest, session: Session = Depends(get_db)
     schedule = RunSchedule(
         repository_url=request.repository_url.strip(),
         interval_minutes=request.interval_minutes,
-        next_run_at=datetime.now(timezone.utc) + timedelta(minutes=request.interval_minutes),
+        next_run_at=datetime.now(UTC) + timedelta(minutes=request.interval_minutes),
     )
     session.add(schedule)
     session.commit()

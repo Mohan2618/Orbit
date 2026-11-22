@@ -2,11 +2,11 @@ import hashlib
 import hmac
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -45,7 +45,7 @@ async def github_webhook(
         raise HTTPException(status_code=400, detail="Missing GitHub delivery identifier.")
     session.execute(
         delete(GitHubDelivery).where(
-            GitHubDelivery.received_at < datetime.now(timezone.utc) - timedelta(days=30)
+            GitHubDelivery.received_at < datetime.now(UTC) - timedelta(days=30)
         )
     )
     if session.get(GitHubDelivery, x_github_delivery) is not None:

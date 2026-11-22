@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import tarfile
 from io import BytesIO
 from pathlib import Path, PurePosixPath
-import tarfile
 from urllib.parse import quote
 
 import httpx

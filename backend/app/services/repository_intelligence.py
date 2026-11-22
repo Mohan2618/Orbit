@@ -261,10 +261,11 @@ def _detect_test_frameworks(
         detected.add("Playwright")
     if "cypress" in dependencies:
         detected.add("Cypress")
-    if any(path.rsplit("/", 1)[-1] == "manage.py" for path in paths):
-        # Django's test runner is part of the framework and needs no dependency.
-        if "django" in dependencies:
-            detected.add("Django test runner")
+    # Django's test runner is part of the framework and needs no dependency.
+    if "django" in dependencies and any(
+        path.rsplit("/", 1)[-1] == "manage.py" for path in paths
+    ):
+        detected.add("Django test runner")
     return sorted(detected)
 
 

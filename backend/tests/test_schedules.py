@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
-import app.workers.tasks as tasks
-from app.models.run_schedule import RunSchedule
 import app.models.test_run as test_run_model
+from app.models.run_schedule import RunSchedule
+from app.workers import tasks
 
 
 def test_schedule_lifecycle_and_minimum_interval(api_client):
@@ -28,7 +28,7 @@ def test_due_schedule_creates_and_enqueues_run(api_client, db_factory, monkeypat
         schedule = RunSchedule(
             repository_url="https://github.com/example/project",
             interval_minutes=30,
-            next_run_at=datetime.now(timezone.utc) - timedelta(minutes=1),
+            next_run_at=datetime.now(UTC) - timedelta(minutes=1),
         )
         session.add(schedule)
         session.commit()
@@ -43,4 +43,4 @@ def test_due_schedule_creates_and_enqueues_run(api_client, db_factory, monkeypat
         run = session.get(test_run_model.TestRun, enqueue.call_args.args[0])
         updated = session.query(RunSchedule).one()
         assert run.repository_url == "https://github.com/example/project"
-        assert updated.next_run_at > datetime.now(timezone.utc).replace(tzinfo=None)
+        assert updated.next_run_at > datetime.now(UTC).replace(tzinfo=None)

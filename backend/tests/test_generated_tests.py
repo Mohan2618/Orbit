@@ -1,9 +1,8 @@
 from unittest.mock import Mock
 
-import pytest
-
 import app.api.routes.test_generation as generation_routes
 import app.api.routes.test_runs as run_routes
+import pytest
 from app.models.generated_test import GeneratedTest
 
 
