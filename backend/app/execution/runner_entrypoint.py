@@ -127,7 +127,15 @@ def main() -> int:
     # Packages live on a dedicated Docker volume because /tmp is mounted noexec.
     ruff = run_step(
         "ruff",
-        [sys.executable, "-m", "ruff", "check", "--output-format=json", "/workspace"],
+        [
+            sys.executable,
+            "-m",
+            "ruff",
+            "check",
+            "--no-cache",
+            "--output-format=json",
+            "/workspace",
+        ],
         timeout=45,
         log_path=log_directory / "ruff.log",
         env={**os.environ, "PYTHONPATH": "/orbit-packages"},
