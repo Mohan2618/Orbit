@@ -1,9 +1,8 @@
 from unittest.mock import Mock
 
-import pytest
-
 import app.api.routes.test_runs as test_run_routes
 import app.models.test_run as test_run_model
+import pytest
 
 
 def test_create_test_run_persists_and_enqueues(api_client, db_factory, monkeypatch):

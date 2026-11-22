@@ -1,7 +1,7 @@
 from datetime import datetime
 
-import app.services.qa_execution as qa_execution
 import app.models.test_run as test_run_model
+from app.services import qa_execution
 from app.workers.tasks import run_test_run
 
 

@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from io import BytesIO
 import json
-from pathlib import Path
 import re
 import tarfile
 import tempfile
 import time
 import uuid
+from io import BytesIO
+from pathlib import Path
 
 import docker
 from docker.errors import APIError, DockerException, ImageNotFound
@@ -19,10 +19,10 @@ from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models.test_run import TestRun
+from app.services.qa_dimensions import inspect_repository
+from app.services.qa_planner import create_plan
 from app.services.repository_archive import download_repository
 from app.services.repository_intelligence import parse_github_repository_url
-from app.services.qa_planner import create_plan
-from app.services.qa_dimensions import inspect_repository
 
 RUNNER_IMAGE = "orbit-api:local"
 MAX_INSTALL_PACKAGES = 40
@@ -204,7 +204,7 @@ def _prepare_volume(client, suffix, labels, volume, mount_path, containers) -> N
         tmpfs={"/tmp": "rw,noexec,nosuid,size=8m"},
     )
     containers.append(container)
-    status, logs = _wait(container, timeout=15)
+    status, _ = _wait(container, timeout=15)
     if status != 0:
         raise RuntimeError("A temporary runner volume could not be prepared for unprivileged access.")
 

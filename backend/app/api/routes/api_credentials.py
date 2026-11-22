@@ -1,15 +1,19 @@
-from datetime import datetime, timezone
 import hashlib
 import hmac
 import secrets
+from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.api_credential import ApiCredential
-from app.schemas.api_credential import ApiCredentialCreated, ApiCredentialRequest, ApiCredentialResponse
+from app.schemas.api_credential import (
+    ApiCredentialCreated,
+    ApiCredentialRequest,
+    ApiCredentialResponse,
+)
 
 router = APIRouter(prefix="/api/v1/admin/api-keys", tags=["team-credentials"])
 MAX_ACTIVE_CREDENTIALS = 100
@@ -64,7 +68,7 @@ def revoke_api_credential(
     if credential is None:
         raise HTTPException(status_code=404, detail="Team API key not found.")
     if credential.revoked_at is None:
-        credential.revoked_at = datetime.now(timezone.utc)
+        credential.revoked_at = datetime.now(UTC)
         session.commit()
         session.refresh(credential)
     return credential

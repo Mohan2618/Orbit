@@ -5,8 +5,8 @@ from __future__ import annotations
 import ast
 import csv
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 
 MAX_SOURCE_FILES = 2_000
 MAX_SOURCE_BYTES = 2 * 1024 * 1024
@@ -57,7 +57,9 @@ def _api_spec_checks(files: list[tuple[Path, str, int]]) -> dict:
     specs = []
     for path, relative, size in files:
         lowered = relative.lower()
-        if not (lowered.endswith("openapi.json") or lowered.endswith("openapi.yaml") or lowered.endswith("openapi.yml") or lowered.endswith("swagger.json")):
+        if not lowered.endswith(
+            ("openapi.json", "openapi.yaml", "openapi.yml", "swagger.json")
+        ):
             continue
         content = _text(path, size)
         if content is None:

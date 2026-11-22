@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models.test_run import TestRun
 from app.models.run_schedule import RunSchedule
+from app.models.test_run import TestRun
 from app.workers.celery_app import celery_app
 
 
@@ -21,18 +21,18 @@ def run_test_run(self, test_run_id: str) -> None:
         if test_run.status == "running" and not redelivered:
             return
         test_run.status = "running"
-        test_run.started_at = datetime.now(timezone.utc)
+        test_run.started_at = datetime.now(UTC)
         session.commit()
 
     try:
         report = execute_test_run(test_run_id)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - Record unexpected QA execution failures.
         with SessionLocal() as session:
             test_run = session.scalar(select(TestRun).where(TestRun.id == test_run_id))
             if test_run is not None:
                 test_run.status = "failed"
                 test_run.error_message = str(exc)[:2000]
-                test_run.completed_at = datetime.now(timezone.utc)
+                test_run.completed_at = datetime.now(UTC)
                 session.commit()
         return
 
@@ -42,14 +42,14 @@ def run_test_run(self, test_run_id: str) -> None:
             test_run.result = report
             test_run.status = "completed"
             test_run.error_message = report.get("error_message")
-            test_run.completed_at = datetime.now(timezone.utc)
+            test_run.completed_at = datetime.now(UTC)
             session.commit()
 
 
 @celery_app.task(name="app.workers.tasks.dispatch_due_schedules")
 def dispatch_due_schedules() -> int:
     """Create at most one run per due schedule, using a row lock to avoid duplicate beat dispatches."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     run_ids = []
     with SessionLocal() as session:
         due = session.scalars(
@@ -69,12 +69,12 @@ def dispatch_due_schedules() -> int:
     for run_id in run_ids:
         try:
             run_test_run.delay(run_id)
-        except Exception:
+        except Exception:  # noqa: BLE001 - Record Celery queue dispatch failures.
             with SessionLocal() as session:
                 run = session.get(TestRun, run_id)
                 if run is not None:
                     run.status = "failed"
                     run.error_message = "The QA worker queue is unavailable."
-                    run.completed_at = datetime.now(timezone.utc)
+                    run.completed_at = datetime.now(UTC)
                     session.commit()
     return len(run_ids)

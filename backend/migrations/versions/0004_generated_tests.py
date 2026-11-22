@@ -1,7 +1,7 @@
 """Persist reviewed model-generated tests."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0004_generated_tests"
 down_revision = "0003_github_deliveries"

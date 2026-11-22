@@ -1,10 +1,10 @@
-from pathlib import Path, PurePosixPath
 import tempfile
+from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, HTTPException
 
 from app.schemas.ml_evaluation import MLEvaluationRequest
-from app.services.ml_evaluation import EvaluationInputError, evaluate_file
+from app.services.ml_evaluation import evaluate_file
 from app.services.repository_archive import download_repository
 from app.services.repository_intelligence import parse_github_repository_url
 

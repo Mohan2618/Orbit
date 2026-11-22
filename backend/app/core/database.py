@@ -1,7 +1,7 @@
 """Database engine and request-scoped SQLAlchemy sessions."""
 
-from collections.abc import Generator
 import os
+from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL

@@ -1,5 +1,5 @@
-from html import escape
 import json
+from html import escape
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, Response

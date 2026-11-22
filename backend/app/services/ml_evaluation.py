@@ -83,7 +83,7 @@ def _classification(values: list[tuple[object, object]], total_rows: int) -> dic
         "macro_recall": sum(item["recall"] for item in per_class) / len(per_class),
         "macro_f1": sum(item["f1"] for item in per_class) / len(per_class),
         "per_class": per_class[:100],
-        "confusion_counts": dict(list(sorted(confusion.items()))[:500]),
+        "confusion_counts": dict(sorted(confusion.items())[:500]),
         "limitations": "Metrics use exact string label matching; class balance and domain suitability are not assessed.",
     }
 

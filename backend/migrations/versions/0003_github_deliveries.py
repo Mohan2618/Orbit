@@ -1,7 +1,7 @@
 """Record GitHub webhook delivery IDs for idempotency."""
 
-from alembic import op
 import sqlalchemy as sa
+from alembic import op
 
 revision = "0003_github_deliveries"
 down_revision = "0002_schedules"
