@@ -49,6 +49,7 @@ WARNING_GUIDANCE = {
 def additional_findings(result: dict) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     dims = result.get("dimensions") or {}
+    context = dims.get("source_context") or {}
     security = (dims.get("security") or {}).get("findings") or []
     for entry in security[:MAX_FINDINGS_PER_GROUP]:
         if not isinstance(entry, dict):
@@ -61,13 +62,15 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         path = str(entry.get("file") or "")
         line = entry.get("line")
         location = f"{path}:{line}" if path and isinstance(line, int) else path
+        source_line = (context.get(location) or {}).get("source") or ""
         findings.append({
             "category": "security", "severity": str(entry.get("severity") or "review"),
-            "tool": "static security scan", "title": title, "cause": cause, "fix": fix,
+            "tool": "static security scan", "title": f"{title} ({location})" if location else title, "cause": cause, "fix": fix,
             "location": location, "location_kind": "detected" if location else "not_available",
             "responsible_file": "", "exit_code": "", "evidence": f"Rule: {rule}",
             "example_before": before, "example_after": after,
-            "example_note": "Illustrative only; the scanner did not provide the actual source line. This is not a confirmed vulnerability.",
+            "example_note": "The suggested correction is illustrative, not a verified patch. This is not a confirmed vulnerability.",
+            "source_snippet": source_line,
         })
 
     candidates = (dims.get("generation") or {}).get("candidates") or []
@@ -77,12 +80,19 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         funcs = [str(name) for name in (candidate.get("functions_without_matching_test_file") or [])][:12]
         source = str(candidate.get("source_file") or "")
         target = str(candidate.get("suggested_test_file") or "")
+        source_entries = [
+            value for value in context.values()
+            if isinstance(value, dict) and value.get("file") == source
+            and value.get("kind") == "test coverage"
+        ][:12]
+        source_entries.sort(key=lambda value: value["line"])
         findings.append({
             "category": "test coverage", "severity": "info", "tool": "test gap heuristic",
-            "title": "Potential test coverage gap",
+            "title": f"Test review: {source}" if source else "Potential test coverage gap",
             "cause": "No matching test filename was identified for these functions: " + (", ".join(funcs) or "unknown") + ". This does not prove they are untested.",
             "fix": f"Review existing tests and coverage before adding focused tests. Suggested file: {target or 'choose an appropriate test module'}.",
             "location": source, "location_kind": "source file" if source else "not_available",
+            "source_snippet": "\\n".join(str(entry["line"]) + ": " + str(entry["source"]) for entry in source_entries),
             "responsible_file": "", "exit_code": "", "evidence": "",
             "example_before": "", "example_after": "", "example_note": "",
         })
