@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.models.run_schedule import RunSchedule
 from app.models.test_run import TestRun
 from app.services.error_explanations import explain_result
+from app.services.qa_findings import additional_findings
 from app.services.repository_intelligence import parse_github_repository_url
 from app.workers.tasks import run_test_run
 
@@ -113,10 +114,10 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
         for item in candidates
     ) or '<p>No test gaps identified.</p>'
 
-    explanations = explain_result(result)
+    explanations = explain_result(result) + additional_findings(result)
     explanation_rows = "".join(
         '<div class="gap-card">'
-        f'<strong>{escape(item["title"])}</strong>'
+        f'<strong>{escape(item["title"])}</strong>'\n        f'<p><b>Severity:</b> {escape(item["severity"])}</p>'
         f'<p><b>Category:</b> {escape(item["category"])} · <b>Tool:</b> {escape(item["tool"])}'
         f'{(" · Exit code: " + escape(item["exit_code"])) if item["exit_code"] else ""}</p>'
         f'{("<p><b>Detected location (" + escape(item["location_kind"]) + "):</b> <code>" + escape(item["location"]) + "</code></p>") if item["location"] else "<p><b>Exact location:</b> Not provided by this tool.</p>"}'
@@ -128,7 +129,7 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
         f'{("<details><summary>Exact tool evidence</summary><pre>" + escape(item["evidence"]) + "</pre></details>") if item["evidence"] else ""}'
         '</div>'
         for item in explanations
-    ) or '<p class="empty">No Ruff or Pytest errors detected in this run.</p>'
+    ) or '<p class="empty">No actionable findings detected in this run.</p>'
     raw = escape(json.dumps(run.result, indent=2, default=str))
     message = run.error_message or result.get("error_message")
 
@@ -164,7 +165,7 @@ main{{max-width:1120px;margin:0 auto;padding:34px 24px 80px}} a{{color:var(--acc
 </div></div>
 
 <div class="panel"><div class="section-head"><h2>Execution</h2><small>{len(steps)} step(s)</small></div><div class="step-list">{step_rows}</div></div>
-<div class="panel"><div class="section-head"><h2>Error explanations</h2><small>{len(explanations)} item(s)</small></div><div class="explanations">{explanation_rows}</div></div>\n<div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
+<div class="panel"><div class="section-head"><h2>QA findings &amp; fix guidance</h2><small>{len(explanations)} item(s)</small></div><div class="explanations">{explanation_rows}</div></div>\n<div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
 <div class="panel"><div class="section-head"><h2>Test gaps</h2><small>{len(candidates)} candidate(s)</small></div>{gap_rows}</div>
 
 <div class="analysis-grid">
