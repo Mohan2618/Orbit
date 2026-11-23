@@ -11,6 +11,7 @@ from app.models.run_schedule import RunSchedule
 from app.models.test_run import TestRun
 from app.services.error_explanations import explain_result
 from app.services.qa_findings import additional_findings
+from app.services.qa_findings_presentation import group_findings
 from app.services.repository_intelligence import parse_github_repository_url
 from app.workers.tasks import run_test_run
 
@@ -115,21 +116,32 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
     ) or '<p>No test gaps identified.</p>'
 
     explanations = explain_result(result) + additional_findings(result)
+    grouped_findings = group_findings(explanations)
     explanation_rows = "".join(
-        '<div class="gap-card">'
-        f'<strong>{escape(item["title"])}</strong>'
-        f'<p><b>Severity:</b> {escape(item["severity"])}</p>'
-        f'<p><b>Category:</b> {escape(item["category"])} · <b>Tool:</b> {escape(item["tool"])}'
-        f'{(" · Exit code: " + escape(item["exit_code"])) if item["exit_code"] else ""}</p>'
-        f'{("<p><b>Detected location (" + escape(item["location_kind"]) + "):</b> <code>" + escape(item["location"]) + "</code></p>") if item["location"] else "<p><b>Exact location:</b> Not provided by this tool.</p>"}'
-        f'{("<p><b>Orbit component:</b> <code>" + escape(item["responsible_file"]) + "</code></p>") if item["responsible_file"] else ""}'
-        f'<p><b>What happened:</b> {escape(item["cause"])}</p>'
-        f'<p><b>Suggested action:</b> {escape(item["fix"])}</p>'
-        f'{("<p><b>Example before (illustrative):</b></p><pre>" + escape(item["example_before"]) + "</pre><p><b>Example after (illustrative):</b></p><pre>" + escape(item["example_after"]) + "</pre>") if item["example_before"] else ""}'
-        f'{("<p><small>" + escape(item["example_note"]) + "</small></p>") if item["example_note"] else ""}'
-        f'{("<details><summary>Exact tool evidence</summary><pre>" + escape(item["evidence"]) + "</pre></details>") if item["evidence"] else ""}'
-        '</div>'
-        for item in explanations
+        '<details class="gap-card finding" data-category="' + escape(group["item"]["category"], quote=True) + '" '
+        'data-severity="' + escape(group["item"]["severity"], quote=True) + '">'
+        '<summary class="finding-summary"><span class="finding-title">' + escape(group["item"]["title"]) + '</span>'
+        '<span class="finding-meta">' + escape(group["item"]["severity"]) + ' · '
+        + escape(group["item"]["category"]) + ' · ' + str(len(group["members"])) + ' finding(s)</span></summary>'
+        '<div class="finding-body">'
+        '<p><b>Tool:</b> ' + escape(group["item"]["tool"]) + '</p>'
+        + ('<p><b>Exit code:</b> ' + escape(group["item"]["exit_code"]) + '</p>' if group["item"]["exit_code"] else '')
+        + '<p><b>What happened:</b> ' + escape(group["item"]["cause"]) + '</p>'
+        + '<p><b>Suggested action:</b> ' + escape(group["item"]["fix"]) + '</p>'
+        + ('<p><b>Orbit component:</b> <code>' + escape(group["item"]["responsible_file"]) + '</code></p>' if group["item"]["responsible_file"] else '')
+        + ('<p><b>Illustrative before:</b></p><pre>' + escape(group["item"]["example_before"]) +
+           '</pre><p><b>Illustrative after:</b></p><pre>' + escape(group["item"]["example_after"]) + '</pre>'
+           if group["item"]["example_before"] else '')
+        + ('<p><small>' + escape(group["item"]["example_note"]) + '</small></p>' if group["item"]["example_note"] else '')
+        + '<details class="evidence"><summary>Reported locations and evidence (' + str(len(group["members"])) + ')</summary>'
+        + ''.join(
+            '<div class="evidence-entry"><p><b>' + escape(member["location_kind"]) + ' location:</b> '
+            + ('<code>' + escape(member["location"]) + '</code>' if member["location"] else 'Not provided')
+            + '</p>' + ('<pre>' + escape(member["evidence"]) + '</pre>' if member["evidence"] else '') + '</div>'
+            for member in group["members"]
+        )
+        + '</details></div></details>'
+        for group in grouped_findings
     ) or '<p class="empty">No actionable findings detected in this run.</p>'
     raw = escape(json.dumps(run.result, indent=2, default=str))
     message = run.error_message or result.get("error_message")
@@ -148,6 +160,12 @@ main{{max-width:1120px;margin:0 auto;padding:34px 24px 80px}} a{{color:var(--acc
 .section-head{{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:14px}} .step-list{{border:1px solid var(--line);border-radius:11px;overflow:hidden}} .step{{display:grid;grid-template-columns:1fr 90px 70px;gap:16px;align-items:center;padding:14px 16px;background:var(--panel2);border-bottom:1px solid var(--line)}} .step:last-child{{border-bottom:0}} .step-name{{font-weight:700}} .step-status{{text-align:center;font:700 11px monospace}} .step-time{{text-align:right}}
 .analysis-grid{{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}} .info-card{{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:17px}} .info-card .value{{display:block;font-size:20px;font-weight:700;margin-top:6px}}
 .explanations{{display:grid;gap:12px}} .gap-card{{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:11px;padding:17px}} .gap-card strong{{font-size:15px}} .code-list{{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0}} .code-list span{{padding:5px 8px;border:1px solid var(--line);border-radius:7px;color:#d5e0dd;background:#101b20;font:12px monospace}}
+.finding-controls{{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}}
+.finding-controls button{{cursor:pointer;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 12px}}
+.finding-controls button.active{{border-color:var(--accent);color:var(--accent)}}
+.finding[hidden]{{display:none}} .finding-summary{{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}}
+.finding-title{{font-weight:700;color:var(--text)}} .finding-meta{{color:var(--muted);font-size:12px}}
+.finding-body{{padding-top:10px}} .evidence-entry{{border-top:1px solid var(--line);padding:8px 0}}
 .message{{border-color:#55482f;background:#17150f}} .message strong{{color:var(--warn)}} details summary{{cursor:pointer;color:var(--accent);font-weight:700}} pre{{white-space:pre-wrap;overflow:auto;max-height:520px;background:#070c0f;border:1px solid var(--line);padding:16px;border-radius:10px;font-size:12px;line-height:1.55}} .empty{{color:var(--muted);padding:8px 0}}
 @media(max-width:900px){{.summary-grid{{grid-template-columns:repeat(3,1fr)}}.hero{{align-items:flex-start;flex-direction:column}}}}
 @media(max-width:600px){{main{{padding:24px 14px 60px}}.summary-grid,.analysis-grid{{grid-template-columns:1fr 1fr}}.step{{grid-template-columns:1fr auto}}.step-time{{display:none}}}}
@@ -166,7 +184,15 @@ main{{max-width:1120px;margin:0 auto;padding:34px 24px 80px}} a{{color:var(--acc
 </div></div>
 
 <div class="panel"><div class="section-head"><h2>Execution</h2><small>{len(steps)} step(s)</small></div><div class="step-list">{step_rows}</div></div>
-<div class="panel"><div class="section-head"><h2>QA findings &amp; fix guidance</h2><small>{len(explanations)} item(s)</small></div><div class="explanations">{explanation_rows}</div></div>\n<div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
+<div class="panel"><div class="section-head"><h2>QA findings &amp; fix guidance</h2><small>{len(explanations)} item(s)</small></div><div class="finding-controls" role="group" aria-label="Filter QA findings">
+<button type="button" class="finding-filter active" data-filter="all" aria-pressed="true">All ({len(explanations)})</button>
+<button type="button" class="finding-filter" data-filter="execution">Errors</button>
+<button type="button" class="finding-filter" data-filter="security">Security</button>
+<button type="button" class="finding-filter" data-filter="compatibility">Warnings</button>
+<button type="button" class="finding-filter" data-filter="test coverage">Test gaps</button>
+<button type="button" id="expand-findings">Expand visible</button>
+<button type="button" id="collapse-findings">Collapse all</button>
+</div><p id="finding-count" aria-live="polite"></p><div class="explanations">{explanation_rows}</div></div>\n<div class="panel"><div class="section-head"><h2>Repository analysis</h2><small>Static inspection</small></div><p><b>{escape(str(repo.get("full_name", run.repository_url)))}</b> · {escape(", ".join(repo.get("languages") or []) or "Unknown")} · {escape(str(repo.get("analyzed_files", 0)))} files analyzed</p></div>
 <div class="panel"><div class="section-head"><h2>Test gaps</h2><small>{len(candidates)} candidate(s)</small></div>{gap_rows}</div>
 
 <div class="analysis-grid">
@@ -177,5 +203,28 @@ main{{max-width:1120px;margin:0 auto;padding:34px 24px 80px}} a{{color:var(--acc
 
 {f'<div class="panel message"><strong>Run message</strong><p>{escape(str(message))}</p></div>' if message else ''}
 <div class="panel"><details><summary>Raw result JSON</summary><pre>{raw}</pre></details></div>
-</main></body></html>"""
+</main><script>
+(function(){{
+  const cards=Array.from(document.querySelectorAll('.finding'));
+  const buttons=Array.from(document.querySelectorAll('.finding-filter'));
+  const counter=document.getElementById('finding-count');
+  function apply(filter){{
+    let visible=0, findings=0;
+    cards.forEach(card=>{{
+      const match=filter==='all' || (filter==='execution'
+        ? ['error','infrastructure','execution','repository','environment'].includes(card.dataset.category)
+          && card.dataset.severity==='error'
+        : card.dataset.category===filter);
+      card.hidden=!match;
+      if(match){{visible++;findings+=Number(card.querySelector('.finding-meta').textContent.match(/(\\d+) finding/)[1]);}}
+    }});
+    buttons.forEach(btn=>{{const active=btn.dataset.filter===filter;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));}});
+    counter.textContent=visible+' group(s), '+findings+' finding(s) shown';
+  }}
+  buttons.forEach(btn=>btn.addEventListener('click',()=>apply(btn.dataset.filter)));
+  document.getElementById('expand-findings').addEventListener('click',()=>cards.forEach(card=>{{if(!card.hidden)card.open=true;}}));
+  document.getElementById('collapse-findings').addEventListener('click',()=>cards.forEach(card=>{{card.open=false;}}));
+  apply('all');
+}})();
+</script></body></html>"""
     return HTMLResponse(html)
