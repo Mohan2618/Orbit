@@ -89,7 +89,7 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         findings.append({
             "category": "test coverage", "severity": "info", "tool": "test reference heuristic",
             "title": f"Test review: {source}" if source else "Potential test coverage gap",
-            "cause": "No function-name reference was found in the inspected test sources for: " + (", ".join(funcs) or "unknown") + ". This is not runtime coverage evidence; indirect or integration tests may cover them.",
+            "cause": "No function-name reference was found in the inspected test sources for: " + (", ".join(funcs) or "unknown") + ". This does not prove they are untested. Runtime coverage and indirect or integration tests may cover them.",
             "fix": f"Inspect actual coverage and existing integration tests before writing new tests. Candidate test module: {target or 'choose an appropriate test module'}.",
             "location": source, "location_kind": "source file" if source else "not_available",
             "source_snippet": "\n".join(str(entry["line"]) + ": " + str(entry["source"]) for entry in source_entries),
