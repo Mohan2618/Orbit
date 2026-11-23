@@ -117,11 +117,15 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
     explanation_rows = "".join(
         '<div class="gap-card">'
         f'<strong>{escape(item["title"])}</strong>'
-        f'<p><b>Source:</b> {escape(item["category"])} · {escape(item["tool"])}'
-        f'{(" · " + escape(item["location"])) if item["location"] else ""}</p>'
+        f'<p><b>Category:</b> {escape(item["category"])} · <b>Tool:</b> {escape(item["tool"])}'
+        f'{(" · Exit code: " + escape(item["exit_code"])) if item["exit_code"] else ""}</p>'
+        f'{("<p><b>Detected location (" + escape(item["location_kind"]) + "):</b> <code>" + escape(item["location"]) + "</code></p>") if item["location"] else "<p><b>Exact location:</b> Not provided by this tool.</p>"}'
+        f'{("<p><b>Orbit component:</b> <code>" + escape(item["responsible_file"]) + "</code></p>") if item["responsible_file"] else ""}'
         f'<p><b>What happened:</b> {escape(item["cause"])}</p>'
         f'<p><b>Suggested action:</b> {escape(item["fix"])}</p>'
-        f'{("<details><summary>Tool evidence</summary><pre>" + escape(item["evidence"]) + "</pre></details>") if item["evidence"] else ""}'
+        f'{("<p><b>Example before (illustrative):</b></p><pre>" + escape(item["example_before"]) + "</pre><p><b>Example after (illustrative):</b></p><pre>" + escape(item["example_after"]) + "</pre>") if item["example_before"] else ""}'
+        f'{("<p><small>" + escape(item["example_note"]) + "</small></p>") if item["example_note"] else ""}'
+        f'{("<details><summary>Exact tool evidence</summary><pre>" + escape(item["evidence"]) + "</pre></details>") if item["evidence"] else ""}'
         '</div>'
         for item in explanations
     ) or '<p class="empty">No Ruff or Pytest errors detected in this run.</p>'

@@ -96,4 +96,27 @@ def explain_result(result: dict) -> list[dict[str, str]]:
             "fix": "Inspect the failure traceback in raw logs, fix the underlying issue and rerun.",
             "location": match.group(1) if match else "", "evidence": "",
         })
+    # Preserve the distinction between a detected location and a generic example.
+    for item in explanations:
+        item["location_kind"] = "detected" if item["location"] else "not_available"
+        item["example_before"] = ""
+        item["example_after"] = ""
+        item["example_note"] = ""
+        item["responsible_file"] = ""
+        item["exit_code"] = ""
+        if item["tool"] == "ruff":
+            item["exit_code"] = str(ruff.get("return_code")) if ruff.get("return_code") is not None else ""
+            if item["title"].startswith("F401:"):
+                item["example_before"] = "import os\\nprint('Hello')"
+                item["example_after"] = "print('Hello')"
+                item["example_note"] = "Illustrative example only; inspect the reported file before editing."
+            elif item["title"] == "Ruff cache write failed":
+                item["responsible_file"] = "backend/app/execution/runner_entrypoint.py"
+                item["example_before"] = '["ruff", "check", "/workspace"]'
+                item["example_after"] = '["ruff", "check", "--no-cache", "/workspace"]'
+                item["example_note"] = "Illustrative command arguments. The updated Orbit runner already uses --no-cache; older reports remain unchanged."
+                item["location"] = "/workspace/.ruff_cache"
+                item["location_kind"] = "filesystem"
+        elif item["tool"] == "pytest":
+            item["exit_code"] = str(pytest.get("return_code")) if pytest.get("return_code") is not None else ""
     return explanations
