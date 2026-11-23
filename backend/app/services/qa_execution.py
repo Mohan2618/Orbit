@@ -21,6 +21,7 @@ from app.core.database import SessionLocal
 from app.models.test_run import TestRun
 from app.services.qa_dimensions import inspect_repository
 from app.services.qa_planner import create_plan
+from app.services.qa_source_context import capture_source_context
 from app.services.repository_archive import download_repository
 from app.services.repository_intelligence import parse_github_repository_url
 
@@ -86,6 +87,7 @@ def execute_test_run(test_run_id: str) -> dict:
                 generated_path.parent.mkdir(exist_ok=True)
                 generated_path.write_text(generated_test["test_code"], encoding="utf-8")
             dimensions = inspect_repository(source)
+            dimensions["source_context"] = capture_source_context(source, dimensions)
             if "Python" not in discovery["languages"]:
                 return {
                     "outcome": "unsupported_language",
