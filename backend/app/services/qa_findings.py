@@ -94,7 +94,7 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         section = summary[1].split("-- Docs:", 1)[0]
         pattern = re.compile(
             r"(?m)^(?P<path>(?:\.\./)?(?:workspace/)?[^\n]+?\.py):(?P<line>\d+)(?:\s+\([^\n]*\))?\n"
-            r"\s+(?P<kind>PydanticDeprecatedSince20|PytestCollectionWarning|StarletteDeprecationWarning|UserWarning):\s*(?P<message>[^\n]+)"
+            r"\s+(?:[^\n:]+\.py:\d+:\s*)?(?P<kind>PydanticDeprecatedSince20|PytestCollectionWarning|StarletteDeprecationWarning|UserWarning):\s*(?P<message>[^\n]+)"
         )
         seen: set[tuple[str, str, str]] = set()
         for match in pattern.finditer(section):
