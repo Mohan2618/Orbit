@@ -40,3 +40,20 @@ def test_dependency_failure_and_timeout():
                         {"name": "pytest", "timed_out": True, "return_code": None}]}
     items = explain_result(result)
     assert {item["tool"] for item in items} == {"dependencies", "pytest"}
+
+
+def test_cache_error_has_exact_filesystem_location_and_example():
+    items = explain_result({"steps": [{"name": "ruff", "return_code": 2}],
+                            "static_analysis": {"output": "Read-only file system", "findings": []}})
+    assert items[0]["location"] == "/workspace/.ruff_cache"
+    assert items[0]["location_kind"] == "filesystem"
+    assert "--no-cache" in items[0]["example_after"]
+    assert items[0]["exit_code"] == "2"
+
+
+def test_unknown_finding_does_not_invent_code_or_location():
+    items = explain_result({"steps": [{"name": "ruff", "return_code": 1}],
+                            "static_analysis": {"findings": [{"code": "X999", "message": "unknown"}]}})
+    assert items[0]["location"] == ""
+    assert items[0]["example_before"] == ""
+    assert items[0]["location_kind"] == "not_available"
