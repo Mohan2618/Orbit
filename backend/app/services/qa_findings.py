@@ -115,6 +115,20 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
                 continue
             seen.add(key)
             title, cause, fix = WARNING_GUIDANCE[kind]
+            message = match.group("message")
+            if kind == "PydanticDeprecatedSince20":
+                if "class-based" in message:
+                    title = "Pydantic class Config is deprecated"
+                    fix = "Replace class Config with model_config = ConfigDict(...), preserving existing settings. Import ConfigDict from pydantic."
+                elif "Field" in message and "example" in message:
+                    title = "Pydantic Field(example=...) is deprecated"
+                    fix = "Move the example into json_schema_extra={'example': ...} on Field, preserving the original example value."
+                elif "from_orm" in message:
+                    title = "Pydantic from_orm() is deprecated"
+                    fix = "Configure from_attributes=True and use model_validate(instance)."
+                elif "dict" in message:
+                    title = "Pydantic dict() is deprecated"
+                    fix = "Use model_dump() instead of dict()."
             findings.append({
                 "category": "compatibility", "severity": "warning", "tool": "pytest warnings",
                 "title": title, "cause": cause, "fix": fix,
