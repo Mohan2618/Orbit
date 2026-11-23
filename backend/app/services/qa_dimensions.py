@@ -106,7 +106,7 @@ def _security_checks(files: list[tuple[Path, str, int]]) -> dict:
                 for alias in node.names:
                     imports[alias.asname or alias.name] = node.module + "." + alias.name
 
-        def resolved_name(node: ast.AST) -> str:
+        def resolved_name(node: ast.AST, imports: dict[str, str] = imports) -> str:
             if isinstance(node, ast.Name):
                 return imports.get(node.id, node.id)
             if isinstance(node, ast.Attribute):
@@ -131,9 +131,20 @@ def _security_checks(files: list[tuple[Path, str, int]]) -> dict:
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 targets = node.targets if isinstance(node, ast.Assign) else [node.target]
                 value = node.value
-                if isinstance(value, ast.Constant) and isinstance(value.value, str) and len(value.value) >= 12:
-                    if any(re.search(r"(?:api_?key|secret|password|token)", resolved_name(target), re.I) for target in targets):
-                        rule = "hardcoded_secret"
+                if (
+                    isinstance(value, ast.Constant)
+                    and isinstance(value.value, str)
+                    and len(value.value) >= 12
+                    and any(
+                        re.search(
+                            r"(?:api_?key|secret|password|token)",
+                            resolved_name(target),
+                            re.IGNORECASE,
+                        )
+                        for target in targets
+                    )
+                ):
+                    rule = "hardcoded_secret"
             if rule:
                 findings.append({
                     "rule": rule, "file": relative, "line": node.lineno,
