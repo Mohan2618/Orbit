@@ -83,30 +83,84 @@ def _api_spec_checks(files: list[tuple[Path, str, int]]) -> dict:
 
 
 def _security_checks(files: list[tuple[Path, str, int]]) -> dict:
-    rules = [
-        ("hardcoded_secret", re.compile(r"(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*['\"][A-Za-z0-9_./+=-]{12,}['\"]")),
-        ("unsafe_yaml_load", re.compile(r"yaml\.load\s*\(")),
-        ("disabled_tls_verification", re.compile(r"verify\s*=\s*False")),
-        ("subprocess_shell", re.compile(r"subprocess\.(?:run|Popen|call)\([^\n]{0,200}shell\s*=\s*True")),
-    ]
-    findings = []
+    """Inspect executable Python AST nodes instead of matching example strings."""
+    findings: list[dict] = []
     scanned = 0
     for path, relative, size in files:
-        if path.suffix.lower() not in {".py", ".js", ".ts", ".jsx", ".tsx", ".yml", ".yaml", ".json", ".env", ".go", ".rb"}:
+        if path.suffix.lower() != ".py":
             continue
         content = _text(path, size)
         if content is None:
             continue
         scanned += 1
-        for line_no, line in enumerate(content.splitlines(), 1):
-            for rule, pattern in rules:
-                if pattern.search(line):
-                    findings.append({"rule": rule, "file": relative, "line": line_no, "severity": "medium"})
-                    if len(findings) >= 500:
-                        break
-            if len(findings) >= 500:
-                break
-    return {"status": "static_scan", "files_scanned": scanned, "findings": findings, "finding_count": len(findings), "limitations": "Pattern matches are triage signals and may be false positives; this is not a penetration test."}
+        try:
+            tree = ast.parse(content)
+        except SyntaxError:
+            continue
+        imports = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    imports[alias.asname or alias.name] = alias.name
+            elif isinstance(node, ast.ImportFrom) and node.module:
+                for alias in node.names:
+                    imports[alias.asname or alias.name] = node.module + "." + alias.name
+
+        def resolved_name(node: ast.AST, imports: dict[str, str] = imports) -> str:
+            if isinstance(node, ast.Name):
+                return imports.get(node.id, node.id)
+            if isinstance(node, ast.Attribute):
+                return resolved_name(node.value) + "." + node.attr
+            return ""
+
+        is_test = any(part in {"tests", "test"} for part in Path(relative).parts) or path.name.startswith("test_")
+        for node in ast.walk(tree):
+            rule = None
+            if isinstance(node, ast.Call):
+                name = resolved_name(node.func)
+                keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg}
+                if name in {"subprocess.run", "subprocess.Popen", "subprocess.call"} and isinstance(keywords.get("shell"), ast.Constant) and keywords["shell"].value is True:
+                    rule = "subprocess_shell"
+                elif name in {"yaml.load", "yaml.unsafe_load"}:
+                    loader = keywords.get("Loader") or (node.args[1] if len(node.args) > 1 else None)
+                    safe = resolved_name(loader) in {"yaml.SafeLoader", "yaml.CSafeLoader"}
+                    if name == "yaml.unsafe_load" or not safe:
+                        rule = "unsafe_yaml_load"
+                elif name in {"requests.get", "requests.post", "requests.put", "requests.delete", "requests.request", "httpx.get", "httpx.post"} and isinstance(keywords.get("verify"), ast.Constant) and keywords["verify"].value is False:
+                    rule = "disabled_tls_verification"
+            elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+                value = node.value
+                if (
+                    isinstance(value, ast.Constant)
+                    and isinstance(value.value, str)
+                    and len(value.value) >= 12
+                    and any(
+                        re.search(
+                            r"(?:api_?key|secret|password|token)",
+                            resolved_name(target),
+                            re.IGNORECASE,
+                        )
+                        for target in targets
+                    )
+                ):
+                    rule = "hardcoded_secret"
+            if rule:
+                findings.append({
+                    "rule": rule, "file": relative, "line": node.lineno,
+                    "severity": "low" if is_test else "medium",
+                    "context": "test_fixture" if is_test else "application",
+                    "confidence": "heuristic",
+                })
+                if len(findings) >= 500:
+                    break
+        if len(findings) >= 500:
+            break
+    return {
+        "status": "static_ast_scan", "files_scanned": scanned,
+        "findings": findings, "finding_count": len(findings),
+        "limitations": "Python AST-based triage only; no dataflow or exploitability verification. Test fixture findings are low priority. Non-Python security scanning is not included.",
+    }
 
 
 def _performance_signals(files: list[tuple[Path, str, int]]) -> dict:
@@ -129,10 +183,17 @@ def _ui_checks(files: list[tuple[Path, str, int]]) -> dict:
 
 
 def _test_generation_candidates(files: list[tuple[Path, str, int]]) -> dict:
+    """Suggest review targets, not missing tests; filename matching is unreliable."""
     candidates = []
-    test_paths = {rel.lower() for _, rel, _ in files if "test" in Path(rel).name.lower() or "spec" in Path(rel).name.lower()}
+    tests = []
     for path, relative, size in files:
-        if path.suffix != ".py" or "test" in path.name.lower() or "spec" in path.name.lower():
+        if path.suffix != ".py" or not (path.name.startswith("test_") or path.name.endswith("_test.py")):
+            continue
+        content = _text(path, size)
+        if content is not None:
+            tests.append(content)
+    for path, relative, size in files:
+        if path.suffix != ".py" or path.name.startswith("test_") or path.name.endswith("_test.py"):
             continue
         content = _text(path, size)
         if content is None:
@@ -141,13 +202,32 @@ def _test_generation_candidates(files: list[tuple[Path, str, int]]) -> dict:
             tree = ast.parse(content)
         except SyntaxError:
             continue
-        public_functions = [node.name for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")]
-        missing = [name for name in public_functions if not any(Path(test).stem.endswith(path.stem) for test in test_paths)]
-        if missing:
-            candidates.append({"source_file": relative, "functions_without_matching_test_file": missing[:50], "suggested_test_file": f"tests/test_{path.stem}.py"})
+        functions = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")
+        ]
+        # Search is a weak signal only. Real coverage requires a matching execution trace.
+        review = [node for node in functions if not any(
+            re.search(r"\b" + re.escape(node.name) + r"\b", test) for test in tests
+        )]
+        if review:
+            candidates.append({
+                "source_file": relative,
+                "functions_without_matching_test_file": [node.name for node in review[:50]],
+                "function_locations": [
+                    {"name": node.name, "line": node.lineno} for node in review[:50]
+                ],
+                "suggested_test_file": f"tests/test_{path.stem}.py",
+                "evidence_type": "no_function_name_reference_in_test_sources",
+                "verified_uncovered": False,
+            })
         if len(candidates) >= 200:
             break
-    return {"status": "candidate_analysis", "candidates": candidates, "count": len(candidates), "generated_code": False, "note": "Review candidates before generating tests; source code is never submitted to an external model."}
+    return {
+        "status": "candidate_analysis", "candidates": candidates, "count": len(candidates),
+        "generated_code": False,
+        "note": "Candidates have no detected function-name reference in test source. This is not execution coverage and does not prove missing tests.",
+    }
 
 
 def _ml_evaluation(files: list[tuple[Path, str, int]]) -> dict:

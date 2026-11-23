@@ -110,10 +110,10 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
     candidates = generation.get("candidates") or []
     gap_rows = "".join(
         f'<div class="card"><b>{escape(str(item.get("source_file", "")))}</b>'
-        f'<p>Missing tests: {escape(", ".join(item.get("functions_without_matching_test_file") or []))}</p>'
+        f'<p>Review candidates (not confirmed uncovered): {escape(", ".join(item.get("functions_without_matching_test_file") or []))}</p>'
         f'<small>Suggested: {escape(str(item.get("suggested_test_file", "—")))}</small></div>'
         for item in candidates
-    ) or '<p>No test gaps identified.</p>'
+    ) or '<p>No test review candidates identified.</p>'
 
     explanations = explain_result(result) + additional_findings(result)
     grouped_findings = group_findings(explanations)
