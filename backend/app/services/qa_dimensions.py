@@ -198,7 +198,7 @@ def _test_generation_candidates(files: list[tuple[Path, str, int]]) -> dict:
         ]
         # Search is a weak signal only. Real coverage requires a matching execution trace.
         review = [node for node in functions if not any(
-            re.search(r"\\b" + re.escape(node.name) + r"\\b", test) for test in tests
+            re.search(r"\b" + re.escape(node.name) + r"\b", test) for test in tests
         )]
         if review:
             candidates.append({
