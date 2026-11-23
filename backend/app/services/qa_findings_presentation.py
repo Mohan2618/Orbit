@@ -1,8 +1,5 @@
 """Presentation grouping for QA findings; preserve evidence and individual locations."""
 
-from collections import defaultdict
-
-
 def group_findings(items: list[dict[str, str]]) -> list[dict]:
     groups = []
     positions = {}
