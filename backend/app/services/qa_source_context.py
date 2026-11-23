@@ -7,7 +7,7 @@ from pathlib import Path
 MAX_SNIPPETS = 120
 MAX_LINE_LENGTH = 220
 SECRET_ASSIGNMENT = re.compile(
-    r"(?i)(api[_-]?key|secret|password|token)\\s*[:=]\\s*(['\\\"])[^'\\\"]+\\2"
+    r"(?i)(api[_-]?key|secret|password|token)\s*[:=]\s*(['\\\"])[^'\\\"]+\2"
 )
 
 
@@ -16,7 +16,7 @@ def _safe_line(line: str, kind: str) -> str:
         return "[line too long to display safely]"
     if kind == "hardcoded_secret":
         return "[potential credential redacted]"
-    return SECRET_ASSIGNMENT.sub(r"\\1 = '[redacted]'", line)
+    return SECRET_ASSIGNMENT.sub(r"\1 = '[redacted]'", line)
 
 
 def capture_source_context(root: Path, dimensions: dict) -> dict[str, dict]:
@@ -50,7 +50,7 @@ def capture_source_context(root: Path, dimensions: dict) -> dict[str, dict]:
     for rel, line, kind in requests:
         if len(output) >= MAX_SNIPPETS:
             break
-        if not rel or rel.startswith("/") or "\\\\" in rel or type(line) is not int or line < 1:
+        if not rel or rel.startswith("/") or "\\" in rel or type(line) is not int or line < 1:
             continue
         try:
             path = (root / rel).resolve()
@@ -60,7 +60,7 @@ def capture_source_context(root: Path, dimensions: dict) -> dict[str, dict]:
             if line > len(lines):
                 continue
             start, stop = max(1, line - 2), min(len(lines), line + 2)
-            excerpt = "\\n".join(
+            excerpt = "\n".join(
                 f"{index}: {_safe_line(lines[index - 1], kind)}"
                 for index in range(start, stop + 1)
             )
