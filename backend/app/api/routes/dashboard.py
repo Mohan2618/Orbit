@@ -128,6 +128,10 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
         + ('<p><b>Exit code:</b> ' + escape(group["item"]["exit_code"]) + '</p>' if group["item"]["exit_code"] else '')
         + '<p><b>What happened:</b> ' + escape(group["item"]["cause"]) + '</p>'
         + '<p><b>Suggested action:</b> ' + escape(group["item"]["fix"]) + '</p>'
+        + ('<p><b>Actual source lines from this run:</b></p><pre>' + escape(group["item"]["source_snippet"]) + '</pre>'
+           if group["item"].get("source_snippet") else
+           ('<p><small>Actual source lines were not captured for this run; no verified replacement snippet is available.</small></p>'
+            if group["item"]["category"] in {"security", "test coverage"} else ''))
         + ('<p><b>Orbit component:</b> <code>' + escape(group["item"]["responsible_file"]) + '</code></p>' if group["item"]["responsible_file"] else '')
         + ('<p><b>Illustrative before:</b></p><pre>' + escape(group["item"]["example_before"]) +
            '</pre><p><b>Illustrative after:</b></p><pre>' + escape(group["item"]["example_after"]) + '</pre>'
