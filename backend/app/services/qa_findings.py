@@ -65,7 +65,7 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         source_line = (context.get(location) or {}).get("source") or ""
         findings.append({
             "category": "security", "severity": str(entry.get("severity") or "review"),
-            "tool": "static security scan", "title": f"{title} ({location})" if location else title, "cause": cause, "fix": fix,
+            "tool": "Python AST security scan", "title": f"{title} ({location})" if location else title, "cause": (cause + (" This match is in a test file and may be a fixture." if entry.get("context") == "test_fixture" else "")), "fix": fix,
             "location": location, "location_kind": "detected" if location else "not_available",
             "responsible_file": "", "exit_code": "", "evidence": f"Rule: {rule}",
             "example_before": before, "example_after": after,
@@ -87,12 +87,12 @@ def additional_findings(result: dict) -> list[dict[str, str]]:
         ][:12]
         source_entries.sort(key=lambda value: value["line"])
         findings.append({
-            "category": "test coverage", "severity": "info", "tool": "test gap heuristic",
+            "category": "test coverage", "severity": "info", "tool": "test reference heuristic",
             "title": f"Test review: {source}" if source else "Potential test coverage gap",
-            "cause": "No matching test filename was identified for these functions: " + (", ".join(funcs) or "unknown") + ". This does not prove they are untested.",
-            "fix": f"Review existing tests and coverage before adding focused tests. Suggested file: {target or 'choose an appropriate test module'}.",
+            "cause": "No function-name reference was found in the inspected test sources for: " + (", ".join(funcs) or "unknown") + ". This is not runtime coverage evidence; indirect or integration tests may cover them.",
+            "fix": f"Inspect actual coverage and existing integration tests before writing new tests. Candidate test module: {target or 'choose an appropriate test module'}.",
             "location": source, "location_kind": "source file" if source else "not_available",
-            "source_snippet": "\\n".join(str(entry["line"]) + ": " + str(entry["source"]) for entry in source_entries),
+            "source_snippet": "\n".join(str(entry["line"]) + ": " + str(entry["source"]) for entry in source_entries),
             "responsible_file": "", "exit_code": "", "evidence": "",
             "example_before": "", "example_after": "", "example_note": "",
         })
