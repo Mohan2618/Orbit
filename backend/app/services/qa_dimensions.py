@@ -121,12 +121,11 @@ def _security_checks(files: list[tuple[Path, str, int]]) -> dict:
                 keywords = {kw.arg: kw.value for kw in node.keywords if kw.arg}
                 if name in {"subprocess.run", "subprocess.Popen", "subprocess.call"} and isinstance(keywords.get("shell"), ast.Constant) and keywords["shell"].value is True:
                     rule = "subprocess_shell"
-                elif name in {"yaml.load", "yaml.unsafe_load"} and (
-                    name == "yaml.unsafe_load" or
-                    not isinstance(keywords.get("Loader"), ast.Attribute) or
-                    resolved_name(keywords["Loader"]) != "yaml.SafeLoader"
-                ):
-                    rule = "unsafe_yaml_load"
+                elif name in {"yaml.load", "yaml.unsafe_load"}:
+                    loader = keywords.get("Loader") or (node.args[1] if len(node.args) > 1 else None)
+                    safe = resolved_name(loader) in {"yaml.SafeLoader", "yaml.CSafeLoader"}
+                    if name == "yaml.unsafe_load" or not safe:
+                        rule = "unsafe_yaml_load"
                 elif name in {"requests.get", "requests.post", "requests.put", "requests.delete", "requests.request", "httpx.get", "httpx.post"} and isinstance(keywords.get("verify"), ast.Constant) and keywords["verify"].value is False:
                     rule = "disabled_tls_verification"
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
