@@ -7,7 +7,7 @@ from app.services.qa_source_context import capture_source_context
 def test_security_ignores_examples_inside_strings(tmp_path: Path):
     (tmp_path / "example.py").write_text(
         'RULE = "subprocess.run(command, shell=True)"\n'
-        'SECRET = "api_key = \'not-a-real-secret\'"\n',
+        'EXAMPLE = "api_key = \'not-a-real-secret\'"\n',
         encoding="utf-8",
     )
     assert inspect_repository(tmp_path)["security"]["finding_count"] == 0
