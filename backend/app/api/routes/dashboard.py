@@ -117,7 +117,8 @@ def dashboard_run_detail(test_run_id: str, session: Session = Depends(get_db)) -
     explanations = explain_result(result) + additional_findings(result)
     explanation_rows = "".join(
         '<div class="gap-card">'
-        f'<strong>{escape(item["title"])}</strong>'\n        f'<p><b>Severity:</b> {escape(item["severity"])}</p>'
+        f'<strong>{escape(item["title"])}</strong>'
+        f'<p><b>Severity:</b> {escape(item["severity"])}</p>'
         f'<p><b>Category:</b> {escape(item["category"])} · <b>Tool:</b> {escape(item["tool"])}'
         f'{(" · Exit code: " + escape(item["exit_code"])) if item["exit_code"] else ""}</p>'
         f'{("<p><b>Detected location (" + escape(item["location_kind"]) + "):</b> <code>" + escape(item["location"]) + "</code></p>") if item["location"] else "<p><b>Exact location:</b> Not provided by this tool.</p>"}'
