@@ -173,10 +173,17 @@ def _ui_checks(files: list[tuple[Path, str, int]]) -> dict:
 
 
 def _test_generation_candidates(files: list[tuple[Path, str, int]]) -> dict:
+    """Suggest review targets, not missing tests; filename matching is unreliable."""
     candidates = []
-    test_paths = {rel.lower() for _, rel, _ in files if "test" in Path(rel).name.lower() or "spec" in Path(rel).name.lower()}
+    tests = []
     for path, relative, size in files:
-        if path.suffix != ".py" or "test" in path.name.lower() or "spec" in path.name.lower():
+        if path.suffix != ".py" or not (path.name.startswith("test_") or path.name.endswith("_test.py")):
+            continue
+        content = _text(path, size)
+        if content is not None:
+            tests.append(content)
+    for path, relative, size in files:
+        if path.suffix != ".py" or path.name.startswith("test_") or path.name.endswith("_test.py"):
             continue
         content = _text(path, size)
         if content is None:
@@ -185,13 +192,32 @@ def _test_generation_candidates(files: list[tuple[Path, str, int]]) -> dict:
             tree = ast.parse(content)
         except SyntaxError:
             continue
-        public_functions = [node.name for node in ast.walk(tree) if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")]
-        missing = [name for name in public_functions if not any(Path(test).stem.endswith(path.stem) for test in test_paths)]
-        if missing:
-            candidates.append({"source_file": relative, "functions_without_matching_test_file": missing[:50], "suggested_test_file": f"tests/test_{path.stem}.py"})
+        functions = [
+            node for node in ast.walk(tree)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and not node.name.startswith("_")
+        ]
+        # Search is a weak signal only. Real coverage requires a matching execution trace.
+        review = [node for node in functions if not any(
+            re.search(r"\\b" + re.escape(node.name) + r"\\b", test) for test in tests
+        )]
+        if review:
+            candidates.append({
+                "source_file": relative,
+                "functions_without_matching_test_file": [node.name for node in review[:50]],
+                "function_locations": [
+                    {"name": node.name, "line": node.lineno} for node in review[:50]
+                ],
+                "suggested_test_file": f"tests/test_{path.stem}.py",
+                "evidence_type": "no_function_name_reference_in_test_sources",
+                "verified_uncovered": False,
+            })
         if len(candidates) >= 200:
             break
-    return {"status": "candidate_analysis", "candidates": candidates, "count": len(candidates), "generated_code": False, "note": "Review candidates before generating tests; source code is never submitted to an external model."}
+    return {
+        "status": "candidate_analysis", "candidates": candidates, "count": len(candidates),
+        "generated_code": False,
+        "note": "Candidates have no detected function-name reference in test source. This is not execution coverage and does not prove missing tests.",
+    }
 
 
 def _ml_evaluation(files: list[tuple[Path, str, int]]) -> dict:
