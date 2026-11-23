@@ -32,7 +32,7 @@ def capture_source_context(root: Path, dimensions: dict) -> dict[str, dict]:
     requests: list[tuple[str, int, str]] = []
     for finding in security:
         if isinstance(finding, dict) and isinstance(finding.get("line"), int):
-            requests.append((str(finding.get("file") or ""), finding["line"], "security"))
+            requests.append((str(finding.get("file") or ""), finding["line"], str(finding.get("rule") or "security")))
     for candidate in candidates:
         if not isinstance(candidate, dict):
             continue
@@ -61,8 +61,9 @@ def capture_source_context(root: Path, dimensions: dict) -> dict[str, dict]:
             lines = path.read_text(encoding="utf-8").splitlines()
             if line > len(lines):
                 continue
-            actual = _safe_line(lines[line - 1], security=kind == "security")
+            actual = ("[potential credential redacted]" if kind == "hardcoded_secret"
+                      else _safe_line(lines[line - 1], security=kind not in {"test coverage"}))
         except (OSError, UnicodeError, ValueError):
             continue
-        output[f"{rel}:{line}"] = {"file": rel, "line": line, "source": actual, "kind": kind}
+        output[f"{rel}:{line}"] = {"file": rel, "line": line, "source": actual, "kind": "test coverage" if kind == "test coverage" else "security"}
     return output
