@@ -10,7 +10,8 @@ def test_captures_actual_function_definition_and_line(tmp_path: Path):
         "source_file": "app.py", "functions_without_matching_test_file": ["calculate"]
     }]}}
     context = capture_source_context(tmp_path, dimensions)
-    assert context["app.py:3"]["source"] == "def calculate(value):"
+    assert "3: def calculate(value):" in context["app.py:3"]["source"]
+    assert "4:     return value + 1" in context["app.py:3"]["source"]
     assert context["app.py:3"]["line"] == 3
 
 
